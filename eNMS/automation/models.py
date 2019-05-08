@@ -158,8 +158,7 @@ class Job(Base):
     ) -> Tuple[dict, str]:
         logs = workflow.logs if workflow else self.logs
         logs.append(f"{self.type} {self.name}: Starting.")
-        with session_scope():
-            self.is_running, self.state, self.logs = True, {}, []
+        self.is_running, self.state, self.logs = True, {}, []
         results: dict = {"results": {}}
         if not payload:
             payload = {}
@@ -172,8 +171,7 @@ class Job(Base):
         now = str(datetime.now()).replace(" ", "-")
         for i in range(self.number_of_retries + 1):
             logs.append(f"Running {self.type} {self.name} (attempt n°{i + 1})")
-            with session_scope():
-                self.completed = self.failed = 0
+            self.completed = self.failed = 0
             attempt = self.run(payload, job_from_workflow_targets, targets, workflow)
             if has_targets and not job_from_workflow_targets:
                 assert targets is not None
@@ -207,10 +205,10 @@ class Job(Base):
                 else:
                     sleep(self.time_between_retries)
         logs.append(f"{self.type} {self.name}: Finished.")
-        with session_scope():
-            self.results[now] = {**results, "logs": logs}
-            self.is_running, self.state = False, {}
-            self.completed = self.failed = 0
+        self.results[now] = {**results, "logs": logs}
+        self.is_running, self.state = False, {}
+        self.completed = self.failed = 0
+        db.session.commit()
         if not workflow and self.send_notification:
             self.notify(results, now)
         return results, now
@@ -240,8 +238,6 @@ class Job(Base):
             }
         self.completed += 1
         self.failed += 1 - results["success"]
-        if not threaded:
-            db.session.commit()
         return results
 
     def device_run(
@@ -252,9 +248,7 @@ class Job(Base):
             sleep(uniform(0.1, 1.0))
             device_result = self.get_results(payload, device, workflow, True)
             with lock:
-                with session_scope() as session:
-                    session.merge(workflow or self)
-                    results["devices"][device.name] = device_result
+                results["devices"][device.name] = device_result
 
     def run(
         self,

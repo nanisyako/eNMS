@@ -234,6 +234,6 @@ function runJob(id) {
         getJobState(id);
       }
     }
-    showLogs(id);
+    //showLogs(id);
   });
 }
