@@ -211,6 +211,7 @@ class Job(Base):
         db.session.commit()
         if not workflow and self.send_notification:
             self.notify(results, now)
+        db.session.commit()
         return results, now
 
     def get_results(
